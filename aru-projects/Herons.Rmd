@@ -1,0 +1,99 @@
+---
+title: "E011 - GIS"
+author: '205707'
+date: "11/11/2021"
+output: 
+    html_document:
+      toc: yes
+      toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE)
+
+library(pacman)
+p_load(tidyverse, sf, janitor)
+```
+
+```{r import data}
+
+```
+
+```{r}
+
+```
+
+```{r data}
+path <- "D:/Assignment data"
+
+data_files <- list.files(path, ".csv")
+
+herons <- data_files[c(2)]
+herons <- map(herons, ~paste0(path, "/", .x))
+herons_data <- map(herons, ~read_csv(.x, show_col_types = FALSE))
+herons_data <- map(herons_data, clean_names)
+
+
+
+```
+
+
+
+
+
+## Introduction / background
+
+## Method
+
+### Exploratory analysis
+
+```{r}
+
+
+source("R/create_decade.R")
+source("R/select_nbn_fields.R")
+source("R/plot_trends_nbn.R")
+
+```
+
+```{r}
+
+herons_data <- select_fields(herons_data[[1]])
+trend_counts(herons_data)
+
+
+
+```
+
+# Count species by decade by 10 km grid square
+
+```{r}
+## remove implausible grid values and select complete obs
+herons_10k <- herons_data %>%
+  filter(between(decade, 1960, 2010), 
+         str_detect(osgr_10km, "^S|^T|^N|^H|^O"))
+  
+
+# observations per 10km square
+
+herons_10k %>%
+  filter(between(decade, 1960, 2010)) %>%
+  count(scientific_name, decade, osgr_10km) %>%
+  pivot_wider(names_from = "decade", values_from = "n", values_fill = 0) %>%
+  select(scientific_name, osgr_10km, `1960`, `1970`, everything()) %>%
+  arrange(scientific_name, osgr_10km)
+
+
+## number of squares occupied by species by decade
+herons_data %>%
+  filter(between(decade, 1960, 2010)) %>%
+  count(scientific_name, decade, osgr_10km) %>%
+  tidyr::complete() %>%
+  ungroup() %>%
+  group_by(scientific_name, decade) %>%
+  summarise(occupied = sum(!is.na(osgr_10km))) %>%
+  pivot_wider(names_from = "decade", values_from = "occupied", values_fill = 0) %>%
+  select(scientific_name, `1960`, everything())
+  
+
+```
