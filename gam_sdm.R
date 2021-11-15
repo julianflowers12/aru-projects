@@ -16,6 +16,49 @@ sdmdata <- readRDS("sdmdata.Rds")
 dim(sdmdata)
 presvals <- readRDS("presence.Rds")
 
+paridae <- data.table::fread("Paridae 2010-2020.csv") %>%
+  janitor::clean_names() %>% 
+  select(lat = latitude_wgs84, lon = longitude_wgs84, 
+         name = scientific_name, contains("osgr"), identification_verification_status, 
+         contains("start"))
+
+dendocopus <- data.table::fread("Dendrocopos.csv") %>%
+  janitor::clean_names() %>% 
+  select(lat = latitude_wgs84, lon = longitude_wgs84, 
+         name = scientific_name, contains("osgr"), identification_verification_status, 
+         contains("start"))
+
+dendrocopos <- dendocopus[!is.na(start_date_month) & str_detect(identification_verification_status , "Accepted") & name %in% c("Dendrocopos major") & str_length(osgr_100km) == 2, .N, by = .(month = start_date_month, osgr_100km, name)]
+
+q <- dendrocopos %>%
+  ggplot(aes(factor(month), fct_rev(osgr_100km), fill = N)) +
+  geom_tile() +
+  facet_wrap(~name, nrow = 1) +
+  viridis::scale_fill_viridis(option = "viridis", direction = -1)
+
+q
+
+head(paridae)
+
+p <- paridae[name %in% c("Parus major", "Cyanistes caeruleus", "Poecile montanus", "Poecile palustris", "Periparus ater") & !is.na(start_date_month) & str_length(osgr_100km) == 2, .N, by = .(month = start_date_month, osgr_100km, name)] %>%
+  ggplot(aes(factor(month), fct_rev(osgr_100km), fill = N)) +
+  geom_tile() +
+  facet_wrap(~name, nrow = 1) +
+  viridis::scale_fill_viridis(option = "mako", direction = -1)
+
+p
+
+p1 <- paridae[name %in% c("Parus major", "Cyanistes caeruleus", "Poecile montanus", "Poecile palustris", "Periparus ater") & !is.na(start_date_month) & str_length(osgr_100km) == 2 & !str_detect(osgr_100km, "^I"), .N, by = .(year = start_date_year, osgr_100km, name)] %>%
+  ggplot(aes(factor(year), fct_rev(osgr_100km), fill = log10(N))) +
+  geom_tile() +
+  facet_wrap(~name, nrow = 1) +
+  viridis::scale_fill_viridis(option = "rocket", direction = -1) +
+  theme_minimal()
+
+p1 +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
 ## trial run
 
 glimpse(sdmdata)
@@ -38,9 +81,11 @@ table(preds$predicted, preds$pb)
 
 o <- getViz(test_gam)
 
-plot(sm(o, 17)) +
+plot(sm(o, 16)) +
   l_fitLine() +
-  l_points()
+  l_points() +
+  l_ciLine()
+  
 
 
 
