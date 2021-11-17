@@ -1,8 +1,10 @@
 ---
-title: "E011 - GIS"
-author: '205707'
+title: "E011 - Landscapes"
+subtitle: "Herons as harbingers of climate change"
+author: '2050707'
 date: "11/11/2021"
 output: 
+    github_document: default
     html_document:
       toc: yes
       toc_float: yes
@@ -19,14 +21,12 @@ p_load(tidyverse, sf, janitor)
 
 ```
 
-```{r}
-
-```
-
 ```{r data}
 path <- "D:/Assignment data"
+shp_path <- "C:/Users/Julian/OneDrive/Desktop/aru_work/assignments/Herons/Spatial"
 
 data_files <- list.files(path, ".csv")
+shp_files <- list.files(shp_path, ".shp")
 
 herons <- data_files[c(2)]
 herons <- map(herons, ~paste0(path, "/", .x))
@@ -34,16 +34,42 @@ herons_data <- map(herons, ~read_csv(.x, show_col_types = FALSE))
 herons_data <- map(herons_data, clean_names)
 
 
+shp_data <- map(shp_files, ~paste0(shp_path, "/", .x))
+shp_data <- shp_data[-c(9, 33)]
+
+shp <- map(shp_data, st_read)
+
+shp[[2]]
+
+##gb 
+
+gb <- st_read(paste0(shp_path, "/", "gb-outlines_4278302/greatbritain.shp"))
+gb_grids <- st_read(paste0(shp_path, "/", "gb-grids_4278301/10km_grid_region.shp"))
+```
+
+## Uncertainty
+
+```{r}
+
+herons_data[[1]] %>%
+  filter(start_date_year >= 1990) %>%
+  group_by(start_date_year,  common_name) %>%
+  summarise(error = mean(coordinate_uncertainty_m, na.rm = TRUE)) %>%
+  pivot_wider(names_from = "common_name", values_from = "error")
+  
+  
+
+
 
 ```
 
-
-
-
+-   Note observation inaccuracy in Great White Egret and Cattle Egret observations
 
 ## Introduction / background
 
 ## Method
+
+## BBS data
 
 ### Exploratory analysis
 
@@ -72,11 +98,13 @@ trend_counts(herons_data)
 herons_10k <- herons_data %>%
   filter(between(decade, 1960, 2010), 
          str_detect(osgr_10km, "^S|^T|^N|^H|^O"))
+
+
   
 
 # observations per 10km square
 
-herons_10k %>%
+herons_10k_obs <- herons_10k %>%
   filter(between(decade, 1960, 2010)) %>%
   count(scientific_name, decade, osgr_10km) %>%
   pivot_wider(names_from = "decade", values_from = "n", values_fill = 0) %>%
@@ -95,5 +123,117 @@ herons_data %>%
   pivot_wider(names_from = "decade", values_from = "occupied", values_fill = 0) %>%
   select(scientific_name, `1960`, everything())
   
+
+```
+
+```{r most northerly square by decade }
+
+
+northerly <- herons_10k_obs %>%
+  group_by(scientific_name) %>%
+  filter(`2010` > 5, 
+         str_detect(osgr_10km, "^H|^N"))
+
+
+
+```
+
+
+```{r grids}
+
+library(patchwork)
+
+grids_plot <- function(df){
+  
+  ggplot() +
+    #geom_sf(data = gb_grids) +
+  geom_sf(data = gb, alpha = 0.1, colour = "grey")  +
+  geom_sf(data = df, fill = "red") +
+  coord_sf() +
+  theme_void()
+  
+}
+
+
+which(grepl("10k", shp_data))
+```
+
+
+
+## Cattle egret
+
+```{r}
+ce <- "Cattle egret"
+
+
+ce1 <- grids_plot(shp[[3]]) + ggtitle(paste(ce, "1990-2000"))
+ce2 <- grids_plot(shp[[5]]) + ggtitle(paste(ce, "2000-2010"))
+ce3 <- grids_plot(shp[[7]]) + ggtitle(paste(ce, "2010-2020"))
+
+ce1 + ce2 + ce3
+
+
+```
+
+## Glossy ibis
+
+```{r}
+gi <- "Glossy ibis"
+
+
+gi1 <- grids_plot(shp[[9]]) + ggtitle(paste(gi, "1990-2000"))
+gi2 <- grids_plot(shp[[11]]) + ggtitle(paste(gi, "2000-2010"))
+gi3 <- grids_plot(shp[[13]]) + ggtitle(paste(gi, "2010-2020"))
+
+gi1 + gi2 + gi3
+
+
+```
+
+## Little egret
+
+```{r}
+le <- "Little egret"
+
+
+le1 <- grids_plot(shp[[25]]) + ggtitle(paste(le, "1990-2000"))
+le2 <- grids_plot(shp[[27]]) + ggtitle(paste(le, "2000-2010"))
+le3 <- grids_plot(shp[[29]]) + ggtitle(paste(le, "2010-2020"))
+
+le1 + le2 + le3
+
+
+```
+
+## Great egret
+
+```{r}
+ge <- "Great egret"
+
+
+ge1 <- grids_plot(shp[[15]]) + ggtitle(paste(ge, "1990-2000"))
+ge2 <- grids_plot(shp[[17]]) + ggtitle(paste(ge, "2000-2010"))
+ge3 <- grids_plot(shp[[19]]) + ggtitle(paste(ge, "2010-2020"))
+
+ge1 + ge2 + ge3
+
+
+```
+
+
+
+
+## Spoonbill
+
+```{r}
+sp <- "Spoonbill"
+
+
+sp1 <- grids_plot(shp[[33]]) + ggtitle(paste(sp, "1990-2000"))
+sp2 <- grids_plot(shp[[35]]) + ggtitle(paste(sp, "2000-2010"))
+sp3 <- grids_plot(shp[[37]]) + ggtitle(paste(sp, "2010-2020"))
+
+sp1 + sp2 + sp3
+
 
 ```
