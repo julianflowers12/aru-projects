@@ -21,7 +21,7 @@ p_load(tidyverse, sf, janitor)
 
 ```
 
-```{r data}
+```{r data, results="hide"}
 path <- "D:/Assignment data"
 shp_path <- "C:/Users/Julian/OneDrive/Desktop/aru_work/assignments/Herons/Spatial"
 
@@ -39,8 +39,6 @@ shp_data <- shp_data[-c(9, 33)]
 
 shp <- map(shp_data, st_read)
 
-shp[[2]]
-
 ##gb 
 
 gb <- st_read(paste0(shp_path, "/", "gb-outlines_4278302/greatbritain.shp"))
@@ -55,7 +53,8 @@ herons_data[[1]] %>%
   filter(start_date_year >= 1990) %>%
   group_by(start_date_year,  common_name) %>%
   summarise(error = mean(coordinate_uncertainty_m, na.rm = TRUE)) %>%
-  pivot_wider(names_from = "common_name", values_from = "error")
+  pivot_wider(names_from = "common_name", values_from = "error") %>%
+  knitr::kable()
   
   
 
