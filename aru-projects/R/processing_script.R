@@ -4,7 +4,7 @@
 
 
 library(pacman)
-p_load(adehabitatHR, sp, sf, caret, rgdal, gt, tidyverse, stars, sdm, usdm, geojsonio, janitor, raster, mapview, here, ggthemes,ggspatial)
+p_load(adehabitatHR, sp, sf, caret, mgcViz, rgdal, gt, tidyverse, stars, sdm, usdm, geojsonio, janitor, raster, mapview, here, ggthemes,ggspatial)
 
 installAll()
 
@@ -37,7 +37,7 @@ data_files <- list.files(data, pattern = "csv", full.names = T)
 data <- map(data_files, data.table::fread)   ## data.table `fread` for speed
 
 ## import shape files and transform to epsg:27700
-shps <- map(shape_files[c(1, 4, 5, 8, 9, 10, 13, 16)], ~shapefile(.x)) ## read into R (could use st_read)
+shps <- map(shape_files[c(1, 4, 5, 6, 11, 9, 10, 14, 17)], ~st_read(.x)) ## read into R (could use st_read)
 shp_sf <- map(shps, st_as_sf)  ## turn into simple feature (see above)
 shp_tx <- map(shp_sf, st_transform, 27700)  ## transform to epsg:27700
 
@@ -47,7 +47,7 @@ shp_tx <- map(shp_sf, st_transform, 27700)  ## transform to epsg:27700
 
 shp_tx
 
-shp_tx_2010 <- shp_tx[[8]]
+shp_tx_2010 <- shp_tx[[9]]
 
 plot(shp_tx_2010)
 
@@ -151,7 +151,7 @@ landcover <- df %>%
 
 ### hectad counts
 
-shp_decade <- map_df(shp_tx[4:8], data.frame)
+shp_decade <- map_df(shp_tx[4:8], data.frame) ### check this
 
 wt_hectad <- shp_decade %>%
   janitor::clean_names() %>%
@@ -189,22 +189,40 @@ glm <- glm(presence ~ ., data = df, family = binomial())
 
 glance(glm)
 tidy(glm)
+bs <- "cr"
 
-gam <- bam(presence ~ s(b3) + s(gsw2) + s(coords) + lc1990 + lc2015, 
-           data = df, family = "binomial")
 
+gam <- bam(presence ~ s(b3, bs = bs) + s(gsw2, bs = bs) + factor(lc1990) + factor(lc2015), 
+           data = df, family = "binomial", discrete = TRUE, method="fREML")
+
+
+coef(gam)
 summary(gam)
 gam.check(gam)
+anova.gam(gam)
+concurvity(gam)
+vis.gam(gam,ticktype="detailed",color="heat",theta=-35)  
+vis.gam(gam, view=c("b3","lc1990"),plot.type="contour",color="heat")
+
+b <- getViz(gam)
+
+print(plot(b, allTerms = T), pages = 1) 
+
+plot.gam(gam, residuals = T, rug = T, pages = 1, shift = T)
+
+qq(getViz(gam))
 
 preds <- predict.gam(gam, df, type = "response") %>%
   bind_cols(df) %>%
   mutate(predicted = ifelse(`...1` > 0.5, 1, 0))
 
+
+
 cf <- caret::confusionMatrix(table(preds$predicted, preds$presence))
 
 cf$table
 
-plot(gam, all.terms = T)
+plot(gam, all.terms = T, pages = 1)
 
 
 
@@ -224,6 +242,69 @@ plot(predsrf)
 p1 <- ensemble(m, newdata=sc, w = 1 ,setting=list(method='weighted',stat='AUC'))
 
 gui(m)
+
+
+##### herons
+
+egrets <- shp_tx[[2]] %>%
+  janitor::clean_names() %>%
+  filter(str_detect(identifica, "Accepted")) %>%
+  dplyr::select(lon = longitude, lat = latitude, 
+         year = start_da_3, osgr_10km, 
+         xcoord, ycoord, geometry) 
+
+egretssp <- st_transform(egrets, 27700)
+# coordinates(egrets) <- ~lon+lat
+# egretssp <- st_as_sf(egrets)
+# egrets <- st_set_crs(egretssp, 27700)
+# st_transform(egrets, "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +units=m +no_defs" )
+
+egrets2019 <- egretssp %>%
+  filter(year == 2019)
+
+egrets2009 <- egretssp %>%
+  filter(year == 2009)
+
+egrets1999 <- egretssp %>%
+  filter(year == 1999)
+
+ggplot(egrets2019) +
+  geom_sf()
+
+ggplot(egrets2009) +
+  geom_sf()
+
+ggplot(egrets1999) +
+  geom_sf()
+
+egrets
+
+lat_90 <- egrets %>%
+  group_by(year) %>%
+  filter(between(year, 1970, 2019)) %>%
+  summarise(q = quantile(xcoord/1000, probs = 0.99), n= n(), 
+            median = quantile(xcoord/1000, probs = 0.5)) 
+
+lat_90 %>%
+  ggplot(aes(year, q)) +
+  geom_point(aes(size = n)) +
+  geom_smooth(aes(colour = n), se = F, method = "gam") +
+  scale_y_continuous(label = scales::comma)
+
+mod <- gam(q ~ s(year), data = lat_90)
+gam.check(mod)
+summary(mod)
+plot(mod, pages = 1, shift = T)
+e <- getViz(mod)
+plot(sm(e, 1)) +
+  l_fitLine(colour = "red") +
+  l_ciLine(mul = 5, colour = "blue", lty = 2) +
+  l_points(shape = 16)
+  
+egrets %>%
+  filter(between(year, 1990, 2019)) %>%
+  ggplot(aes(factor(year), lat)) +
+  geom_boxplot(outlier.shape = "")
 
 
              
