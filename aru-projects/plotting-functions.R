@@ -1,7 +1,7 @@
 ## plotting script in ggplot 2
 
 
-hectad_plots <- function(shp, crs = NULL, name, title, caption){
+hectad_plots <- function(shp, crs = NULL, name, title = NULL, caption = NULL){
 
   require(ggplot2)
   require(ggspatial)
@@ -21,7 +21,28 @@ p
 
 }
 
-
-hectad_plots(shp_tx[[2]], name = "Great spotted woodpecker",
-         title = "Hectad observation counts of great spotted woodpecker, 2019",
+library(patchwork)
+b <- hectad_plots(shp_tx[[1]], name = "Blue tit",
+         title = "Blue tit, 2019",
          caption = "Source: BTO")
+
+g <- hectad_plots(shp_tx[[2]], name = "Great spotted woodpecker",
+                  title = "Great spotted woodpecker, 2019",
+                  caption = "Source: BTO")
+
+
+
+b <- b +
+  geom_sf(data = shp_tx[[3]], alpha = 0.0, colour = "red", fill = )
+
+g <- g +
+  geom_sf(data = shp_tx[[3]], alpha = 0.0, colour = "red")
+
+p <- b + g
+
+q <- p + plot_annotation(
+  title = "Willow tit home range compared with distribution of blue tit and great spotted woodpecker, 2019",
+  subtitle = "Hectad counts"
+)
+
+ggsave("hectads.png", q)
