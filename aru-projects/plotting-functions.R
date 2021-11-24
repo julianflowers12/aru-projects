@@ -1,7 +1,7 @@
 ## plotting script in ggplot 2
 
 
-my_plots <- function(shp, crs, name, title, caption){
+hectad_plots <- function(shp, crs = NULL, name, title, caption){
 
   require(ggplot2)
   require(ggspatial)
@@ -22,6 +22,6 @@ p
 }
 
 
-my_plots(shp_tx[[2]], crs = 4326, name = "Great spotted woodpecker",
+hectad_plots(shp_tx[[2]], name = "Great spotted woodpecker",
          title = "Hectad observation counts of great spotted woodpecker, 2019",
          caption = "Source: BTO")
